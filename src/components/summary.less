@@ -29,4 +29,96 @@
       background-color: @float-bg-color;
     }
   }
+
+  .case-times-box-plot {
+    width: 100%;
+    margin-top: @spacing-medium;
+
+    h2 {
+      text-align: center;
+      font-size: inherit;
+      text-transform: uppercase;
+      color: @text-color-muted;
+    }
+  }
+
+  .box-plot-row {
+    display: flex;
+    align-items: center;
+    margin: 2px 0;
+
+    .box-plot-label {
+      font-weight: bold;
+      color: @body-text-color;
+    }
+
+    .box-plot-skips {
+      flex: 0 0 4em;
+      margin-left: @spacing-small;
+      font-size: x-small;
+      color: @text-color-muted;
+    }
+
+    .box-plot-track {
+      position: relative;
+      flex-grow: 1;
+      height: 0.9em;
+      margin: 0 @spacing-small;
+
+      .box-plot-whisker,
+      .box-plot-box,
+      .box-plot-median {
+        position: absolute;
+        top: 0;
+        height: 100%;
+      }
+
+      .box-plot-whisker {
+        height: 2px;
+        top: calc(50% - 1px);
+        background-color: @border-color-muted;
+      }
+
+      .box-plot-box {
+        min-width: 2px;
+        background-color: @btn-primary-bg-color;
+        border-radius: 2px;
+        opacity: 0.8;
+      }
+
+      .box-plot-median {
+        width: 2px;
+        background-color: #fff;
+      }
+
+      .box-plot-tooltip {
+        position: absolute;
+        top: 110%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        display: none;
+        padding: @spacing-small @spacing-medium;
+        gap: @spacing-medium;
+        background-color: @float-bg-color;
+        border: 1px solid @border-color;
+        border-radius: 3px;
+        white-space: nowrap;
+
+        .box-plot-stat b {
+          color: @body-text-color;
+        }
+      }
+
+      &:hover .box-plot-tooltip {
+        display: flex;
+      }
+    }
+
+    .box-plot-time {
+      flex: 0 0 3.5em;
+      text-align: right;
+      color: @body-text-color;
+    }
+  }
 }

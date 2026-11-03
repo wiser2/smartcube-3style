@@ -1,16 +1,18 @@
 import React from "react";
 
 import { useAppSelector } from "../state/hooks";
-import { selectTrainerResults } from "../state/trainer.duck";
+import { selectTrainerMode, selectTrainerResults } from "../state/trainer.duck";
 import { Move, simplifyAlg } from "../lib/cube/cube";
 
 import './summary.less';
 
 export default function Summary() {
+  const mode = useAppSelector(selectTrainerMode);
   const results = useAppSelector(selectTrainerResults);
   let sortedResults = [...results].sort((a, b) => (b.time || Infinity) - (a.time || Infinity));
 
   return <div className="summary">
+    <CaseTimesBoxPlot mode={mode} results={results} />
     {results.length > 0 ?
       <>
         <table>
@@ -37,6 +39,92 @@ export default function Summary() {
       </>
     : null}
   </div>
+}
+
+// After a practice session, each case has been seen any number of times. Show a
+// box-and-whisker plot of the solve times per case so slow cases stand out.
+function CaseTimesBoxPlot({ mode, results }) {
+  if (mode !== 'practice') {
+    return null;
+  }
+
+  const timesByCase = new Map();
+  const skipsByCase = new Map();
+  results.forEach((result) => {
+    if (result.time) {
+      const times = timesByCase.get(result.prompt) ?? [];
+      times.push(result.time);
+      timesByCase.set(result.prompt, times);
+    } else {
+      skipsByCase.set(result.prompt, (skipsByCase.get(result.prompt) ?? 0) + 1);
+    }
+  });
+
+  const boxes = [...timesByCase.entries()]
+    .map(([prompt, times]) => ({
+      prompt,
+      ...boxStats(times),
+      skips: skipsByCase.get(prompt) ?? 0,
+    }))
+    .sort((a, b) => b.median - a.median);
+
+  if (boxes.length === 0) {
+    return null;
+  }
+  const max = Math.max(...boxes.map((box) => box.max));
+
+  return <div className="case-times-box-plot">
+    <h2>Case times</h2>
+    {boxes.map((box) => <BoxPlotRow box={box} max={max} key={box.prompt} />)}
+  </div>;
+}
+
+function BoxPlotRow({ box, max }) {
+  const percent = (time: number) => `${(time / max) * 100}%`;
+
+  return <div className="box-plot-row">
+    <span className="box-plot-label">{box.prompt}</span>
+    <span className="box-plot-skips">
+      {box.skips > 0 ? `${box.skips} skip${box.skips > 1 ? 's' : ''}` : ''}
+    </span>
+    <span className="box-plot-track">
+      <span
+        className="box-plot-whisker"
+        style={{ left: percent(box.min), width: percent(box.max - box.min) }}
+      />
+      <span
+        className="box-plot-box"
+        style={{ left: percent(box.q1), width: percent(box.q3 - box.q1) }}
+      />
+      <span className="box-plot-median" style={{ left: percent(box.median) }} />
+      <span className="box-plot-tooltip">
+        {(["min", "q1", "median", "q3", "max"] as const).map((stat) =>
+          <span key={stat} className="box-plot-stat">
+            {stat} <b>{formatTime(box[stat])}</b>
+          </span>
+        )}
+      </span>
+    </span>
+    <span className="box-plot-time">{formatTime(box.median)}</span>
+  </div>;
+}
+
+function boxStats(times: number[]) {
+  const sorted = [...times].sort((a, b) => a - b);
+  return {
+    min: sorted[0],
+    max: sorted[sorted.length - 1],
+    q1: quantile(sorted, 0.25),
+    median: quantile(sorted, 0.5),
+    q3: quantile(sorted, 0.75),
+  };
+}
+
+function quantile(sorted: number[], q: number): number {
+  const position = (sorted.length - 1) * q;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
 }
 
 function calcExecTime(totalTime: number | null, recognitionTime: number | null): number {
