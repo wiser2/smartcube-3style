@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../state/hooks';
 
 import Timer from './timer';
-import { resetPrompt } from '../state/prompt.duck';
+import { resetPrompt, selectCurrentPrompt } from '../state/prompt.duck';
+import { selectSelectedPieceType } from '../state/settings.duck';
+import { selectPairMemo } from '../state/pairs.duck';
 import Prompt from './prompt';
 import Moves from './moves';
 import { endTraining, selectTrainerActive, startTraining } from '../state/trainer.duck';
@@ -25,6 +27,7 @@ export default function TrainerPage() {
       <>
         <ProgressBar />
         <Prompt />
+        <AlgorithmHint />
         <Timer />
         <Moves />
         <StopButton />
@@ -97,6 +100,35 @@ function ActivateButton() {
       >{isLoadingFont ? 'Loading…' : 'Start'}</button>
     }
   </div>
+}
+
+function AlgorithmHint() {
+  const prompt = useAppSelector(selectCurrentPrompt);
+  const pieceType = useAppSelector(selectSelectedPieceType);
+  const memo = useAppSelector((state) => selectPairMemo(state, pieceType, prompt ?? ''));
+
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    setRevealed(false);
+  }, [prompt]);
+
+  if (!prompt) {
+    return null;
+  }
+
+  const prefix = memo.word ? `${memo.word}: ` : '';
+
+  return <div className='algorithm-hint'>
+    {revealed ?
+      <p>{prefix}{memo.algorithm || 'No algorithm saved for this pair'}</p>
+    :
+      <button
+        className='btn btn-default'
+        onClick={() => setRevealed(true)}
+      >Show algorithm</button>
+    }
+  </div>;
 }
 
 function Instructions() {

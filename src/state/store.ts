@@ -5,6 +5,10 @@ import {
   settingsPersistenceMiddleware
 } from "./settings.duck";
 import {
+  pairsSlice,
+  pairsPersistenceMiddleware
+} from "./pairs.duck";
+import {
   connectionSlice,
   connectionMiddleware,
   disconnectMiddleware
@@ -37,6 +41,7 @@ import {
 const store = configureStore({
   reducer: {
     settings: settingsSlice.reducer,
+    pairs: pairsSlice.reducer,
     connection: connectionSlice.reducer,
     cube: cubeSlice.reducer,
     prompt: promptSlice.reducer,
@@ -44,6 +49,7 @@ const store = configureStore({
   },
   middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(
     settingsPersistenceMiddleware,
+    pairsPersistenceMiddleware,
     addSettingsToPromptResetMiddleware,
     resetOnSettingsOrConnectionChangeMiddleware,
     setTargetOnPromptChangeMiddleware,

@@ -12,6 +12,32 @@ import { setTarget } from './cube.duck';
 import { getIndicesForSharedStickers, stickerToIndex } from '../lib/cube/cube';
 
 // Helper functions
+// A pair can be selected when both letters map to stickers that can be 3-cycled
+// together: neither may share a piece with the buffer, and (without twists) the
+// two letters may not share a piece with each other.
+export function isPairSelectable(settings: TrainingSettings, first: string, second: string): boolean {
+  if (first.length !== 1 || second.length !== 1 || first === second) {
+    return false;
+  }
+  const pieceType = settings.pieceType;
+  const firstIndex = settings.letterScheme.indexOf(first);
+  const secondIndex = settings.letterScheme.indexOf(second);
+  if (firstIndex < 0 || secondIndex < 0) {
+    return false;
+  }
+  const bufferIndices = getIndicesForSharedStickers(
+    stickerToIndex(settings.buffer, pieceType), pieceType);
+  if (bufferIndices.includes(firstIndex) || bufferIndices.includes(secondIndex)) {
+    return false;
+  }
+  if (!settings.includeTwists &&
+      getIndicesForSharedStickers(firstIndex, pieceType).includes(secondIndex)) {
+    return false;
+  }
+  return true;
+}
+
+// Helper functions
 function shuffle(array: any[]): Array<any>{
   let remaining = array.length;
   let randomIndex: number;
@@ -25,12 +51,55 @@ function shuffle(array: any[]): Array<any>{
   return array;
 }
 
+// Every valid pair for these settings (all letters except ones sharing a piece
+// with the buffer), regardless of which letters or pairs are selected, sorted
+// alphabetically.
+export function getAllSelectablePairs(settings: TrainingSettings): string[] {
+  const bufferIndices = getIndicesForSharedStickers(
+    stickerToIndex(settings.buffer, settings.pieceType), settings.pieceType);
+  const availableLetters = settings.letterScheme.split('').filter((_, index) =>
+    !bufferIndices.includes(index)
+  );
+
+  const pairs: string[] = [];
+  availableLetters.forEach((first) =>
+    availableLetters.forEach((second) => {
+      if (isPairSelectable(settings, first, second)) {
+        pairs.push(first + second);
+      }
+    })
+  );
+  return pairs.sort();
+}
+
+// All pairs the trainer may present for these settings (the chosen pairs, or
+// every pair for the selected letters), including inverses when they are
+// enabled, deduped and sorted alphabetically.
+export function getTrainablePairs(settings: TrainingSettings): string[] {
+  const selectedPairs = settings.selectedPairs ?? [];
+  const prompts = selectedPairs.length > 0
+    // Train only the user's chosen pairs, dropping any that are invalid.
+    ? selectedPairs.filter((pair) =>
+        isPairSelectable(settings, pair[0], pair[1] ?? '')
+      )
+    : generateAllPairPrompts(settings);
+
+  const withInverses = settings.includeInverses
+    ? [...prompts, ...prompts.map((prompt) => prompt.split('').reverse().join(''))]
+    : prompts;
+  // Inverses introduce duplicates when more than one letter is selected
+  return [...new Set(withInverses)].sort();
+}
+
 export function generatePrompts(settings: TrainingSettings): string[] {
+  return shuffle(getTrainablePairs(settings));
+}
+
+function generateAllPairPrompts(settings: TrainingSettings): string[] {
   const letters = settings.selectedLetters;
   const availableLetters = settings.letterScheme.split('');
-  const includeInverses = settings.includeInverses;
 
-  const prompts = letters?.map((first) => {
+  return letters?.map((first) => {
     const bufferIndex = stickerToIndex(settings.buffer, settings.pieceType);
     const firstIndex = settings.letterScheme.indexOf(first);
 
@@ -46,17 +115,6 @@ export function generatePrompts(settings: TrainingSettings): string[] {
       `${first}${second}`
     )
   }).flat();
-
-  let uniquePrompts = prompts;
-  if (includeInverses) {
-    prompts.push(...prompts.map((prompt) =>
-      prompt.split('').reverse().join(''))
-    );
-    // Inverses introduce duplicates when more than one letter is selected
-    uniquePrompts = [...new Set(prompts)];
-  }
-
-  return shuffle(uniquePrompts);
 }
 
 export function getInverse3CycleForCurrentPrompt(state: RootState): [number, number, number] | undefined {

@@ -16,6 +16,7 @@ export type TrainingSettings = {
   letterScheme: string;
   buffer: string;
   selectedLetters: string[];
+  selectedPairs: string[];
 }
 
 type SettingsGroup = {
@@ -31,8 +32,7 @@ type Settings = {
 }
 
 // Initial State
-const savedSettings = localStorage.getItem('settings');
-const initialState: Settings = savedSettings ? JSON.parse(savedSettings) : {
+const defaultSettings: Settings = {
   selectedPieceType: 'corners',
   settings: {
     corners: {
@@ -41,7 +41,8 @@ const initialState: Settings = savedSettings ? JSON.parse(savedSettings) : {
       includeTwists: false,
       letterScheme: 'ABCDEFGHIJKLMNOPQRSTUVWX',
       buffer: 'UFR',
-      selectedLetters: []
+      selectedLetters: [],
+      selectedPairs: []
     },
     edges: {
       pieceType: 'edges',
@@ -49,10 +50,23 @@ const initialState: Settings = savedSettings ? JSON.parse(savedSettings) : {
       includeTwists: false,
       letterScheme: 'ABCDEFGHIJKLMNOPQRSTUVWX',
       buffer: 'UF',
-      selectedLetters: []
+      selectedLetters: [],
+      selectedPairs: []
     }
   },
 };
+
+// Merge saved settings over the defaults so newly added fields stay populated.
+const savedSettings = localStorage.getItem('settings');
+const saved = savedSettings ? JSON.parse(savedSettings) : undefined;
+const initialState: Settings = saved ? {
+  ...defaultSettings,
+  ...saved,
+  settings: {
+    corners: { ...defaultSettings.settings.corners, ...saved.settings?.corners },
+    edges: { ...defaultSettings.settings.edges, ...saved.settings?.edges },
+  },
+} : defaultSettings;
 
 // Selectors
 export const selectSettings = (state: RootState) => state.settings;
@@ -64,6 +78,7 @@ export const selectLetterScheme = (state: RootState) => selectSettingsForCurrent
 export const selectBuffer = (state: RootState) => selectSettingsForCurrentPiece(state).buffer;
 export const selectBufferIndex = (state: RootState) => pieceToIndex(selectBuffer(state), selectSelectedPieceType(state));
 export const selectSelectedLetters = (state: RootState) => selectSettingsForCurrentPiece(state).selectedLetters;
+export const selectSelectedPairs = (state: RootState) => selectSettingsForCurrentPiece(state).selectedPairs;
 
 // Slice
 export const settingsSlice = createSlice({
@@ -90,6 +105,9 @@ export const settingsSlice = createSlice({
     },
     setSelectedLetters: (state, action: PayloadAction<string[]>) => {
       state.settings[state.selectedPieceType].selectedLetters = action.payload;
+    },
+    setSelectedPairs: (state, action: PayloadAction<string[]>) => {
+      state.settings[state.selectedPieceType].selectedPairs = action.payload;
     }
   }
 });
@@ -103,6 +121,7 @@ export const {
   setLetterScheme,
   setBuffer,
   setSelectedLetters,
+  setSelectedPairs,
 } = settingsSlice.actions;
 
 // Middleware

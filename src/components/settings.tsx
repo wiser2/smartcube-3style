@@ -8,13 +8,14 @@ import {
   selectIncludeInverses,
   selectIncludeTwists,
   selectLetterScheme,
-  selectSelectedLetters,
+  selectSelectedPairs,
   selectSelectedPieceType,
   setBuffer,
   setIncludeInverses,
   setIncludeTwists,
   setLetterScheme,
   setSelectedLetters,
+  setSelectedPairs,
   setSelectedPieceType
 } from '../state/settings.duck';
 
@@ -32,11 +33,11 @@ export default function Settings({ closeSettings }) {
 
     <div className="settings-page">
       <PieceTypeSelector />
-      <IncludeInverses />
       {/* <IncludeTwists /> */}
       <LetterScheme />
       <BufferSettings />
-      <SelectedLetters />
+      <IncludeInverses />
+      <PairMatrix />
       <div className='settings-close-button'>
         <button className='btn btn-primary'
           onClick={closeSettings}>Done</button>
@@ -112,6 +113,7 @@ function BufferSettings() {
 
   const onUpdate = (event: React.ChangeEvent<HTMLSelectElement>) => {
     dispatch(setSelectedLetters([]));
+    dispatch(setSelectedPairs([]));
     dispatch(setBuffer(event.target.value));
   }
 
@@ -156,51 +158,116 @@ function LetterScheme() {
   </div>;
 }
 
-function SelectedLetters() {
+function PairMatrix() {
   const dispatch = useAppDispatch();
 
   const letterScheme = useAppSelector(selectLetterScheme);
-  const selectedLetters = useAppSelector(selectSelectedLetters);
-  const allLetters = letterScheme.split('');
-
   const pieceType = useAppSelector(selectSelectedPieceType);
   const buffer = useAppSelector(selectBuffer);
+  const includeTwists = useAppSelector(selectIncludeTwists);
+  const includeInverses = useAppSelector(selectIncludeInverses);
+  const selectedPairs = useAppSelector(selectSelectedPairs);
+
   const bufferIndex = stickerToIndex(buffer, pieceType);
   const bufferIndices = getIndicesForSharedStickers(bufferIndex, pieceType);
-  const availableLetters = allLetters.filter((_, index) =>
+  const letters = letterScheme.split('').filter((_, index) =>
     !bufferIndices.includes(index)
   );
 
-  const onUpdate = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    let selectedOptions: string[] = [];
-    for (let i = 0; i < event.target.selectedOptions.length; i++) {
-      selectedOptions.push(event.target.selectedOptions[i].value);
+  const isSelectable = (first: string, second: string) => {
+    if (first === second) {
+      return false;
     }
-
-    if (selectedOptions.includes('all')) {
-      if (selectedLetters.length < availableLetters.length) {
-        selectedOptions = availableLetters;
-      } else {
-        selectedOptions = [];
+    if (!includeTwists) {
+      const firstIndex = letterScheme.indexOf(first);
+      const secondIndex = letterScheme.indexOf(second);
+      if (getIndicesForSharedStickers(firstIndex, pieceType).includes(secondIndex)) {
+        return false;
       }
     }
+    return true;
+  };
 
-    dispatch(setSelectedLetters(selectedOptions));
+  const inverseOf = (pair: string) => pair.split('').reverse().join('');
 
-    if (selectedOptions.length === availableLetters.length) {
-      selectedOptions = ['all'].concat(selectedOptions);
-    }
-  }
+  const toggle = (first: string, second: string) => {
+    toggleGroup([first + second]);
+  };
 
-  return <div className="selected-letters">
+  // Selecting a header letter selects the whole row (pairs starting with that
+  // letter) or column (pairs ending with that letter).
+  const rowPairs = (row: string) =>
+    letters.filter((column) => isSelectable(row, column)).map((column) => row + column);
+  const columnPairs = (column: string) =>
+    letters.filter((row) => isSelectable(row, column)).map((row) => row + column);
+
+  const invertGroup = (pairs: string[]) =>
+    includeInverses
+      ? [...new Set(pairs.flatMap((pair) => [pair, inverseOf(pair)]))]
+      : pairs;
+
+  const allSelected = (pairs: string[]) =>
+    pairs.length > 0 && pairs.every((pair) => selectedPairs.includes(pair));
+
+  const toggleGroup = (pairs: string[]) => {
+    const group = invertGroup(pairs);
+    const next = allSelected(group)
+      ? selectedPairs.filter((pair) => !group.includes(pair))
+      : [...new Set([...selectedPairs, ...group])].sort();
+    dispatch(setSelectedPairs(next));
+  };
+
+  return <div className="pair-matrix">
     <label>
-      Selected letters
-      <select className="selected-letters" onChange={onUpdate} value={selectedLetters} multiple={true}>
-        <option value="all">All</option>
-        {availableLetters.map((letter) => {
-          return <option key={letter} value={letter}>{letter}</option>
-        })}
-      </select>
+      Selected pairs
     </label>
+    <div className="settings-hint">
+      <FontAwesomeIcon icon={faInfoCircle} />
+      <span>
+        Toggle specific letter pairs to train (row = first letter, column = second).
+        Click a letter to select its whole row or column. Without twists, pairs on
+        the same piece are unavailable. With inverses on, a pair selects its
+        reverse too.
+      </span>
+    </div>
+    <button
+      className='btn btn-default pair-matrix-clear'
+      onClick={() => dispatch(setSelectedPairs(letters.flatMap((row) => rowPairs(row))))}
+    >Select all</button>
+    <button
+      className='btn btn-default pair-matrix-clear'
+      onClick={() => dispatch(setSelectedPairs([]))}
+      disabled={selectedPairs.length === 0}
+    >Clear pairs</button>
+    <div className="pair-matrix-grid" style={{ gridTemplateColumns: `repeat(${letters.length + 1}, minmax(0, 1fr))` }}>
+      <div className="pair-matrix-header" />
+      {letters.map((letter) =>
+        <button
+          className={`pair-matrix-header${allSelected(columnPairs(letter)) ? ' pair-matrix-header-selected' : ''}`}
+          key={`column-${letter}`}
+          onClick={() => toggleGroup(columnPairs(letter))}
+        >{letter}</button>
+      )}
+      {letters.map((rowLetter) => [
+        <button
+          className={`pair-matrix-header${allSelected(rowPairs(rowLetter)) ? ' pair-matrix-header-selected' : ''}`}
+          key={`row-${rowLetter}`}
+          onClick={() => toggleGroup(rowPairs(rowLetter))}
+        >{rowLetter}</button>,
+        ...letters.map((columnLetter) => {
+          const pair = rowLetter + columnLetter;
+          const selected = selectedPairs.includes(pair);
+          const selectable = isSelectable(rowLetter, columnLetter);
+          return <button
+            key={pair}
+            className={`pair-matrix-cell${selected ? ' pair-matrix-cell-selected' : ''}`}
+            disabled={!selectable}
+            onClick={() => toggle(rowLetter, columnLetter)}
+            aria-label={pair}
+          />;
+        })
+      ])}
+    </div>
   </div>;
 }
+

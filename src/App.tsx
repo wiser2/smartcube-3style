@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faGear } from '@fortawesome/free-solid-svg-icons';
+import { faBook, faGear } from '@fortawesome/free-solid-svg-icons';
 
 import ConnectionStatusButton from './components/connection-status';
 import Settings from './components/settings';
+import PairsPage from './components/pairs';
 import TrainerPage from './components/trainer';
 import NotConnectedMessage from './components/not-connected-message';
 
@@ -14,9 +15,11 @@ import { Footer } from './components/footer';
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
+  const [showPairs, setShowPairs] = useState(false);
   const isConnected = useAppSelector(selectIsConnected);
 
   const closeSettings = () => setShowSettings(false);
+  const closePairs = () => setShowPairs(false);
 
   return <>
     <div className="header">
@@ -24,7 +27,14 @@ export default function App() {
 
       <button
         className='btn btn-default'
-        onClick={() => { setShowSettings(!showSettings) }}
+        onClick={() => { setShowPairs(!showPairs); setShowSettings(false); }}
+      >
+        <FontAwesomeIcon icon={faBook} />
+      </button>
+
+      <button
+        className='btn btn-default'
+        onClick={() => { setShowSettings(!showSettings); setShowPairs(false); }}
       >
         <FontAwesomeIcon icon={faGear} />
       </button>
@@ -32,8 +42,9 @@ export default function App() {
 
     <div className="container">
       {showSettings ? <Settings closeSettings={closeSettings} /> : null}
-      {!isConnected && !showSettings ? <NotConnectedMessage /> : null}
-      {isConnected && !showSettings ? <TrainerPage /> : null}
+      {showPairs ? <PairsPage closePairs={closePairs} /> : null}
+      {!isConnected && !showSettings && !showPairs ? <NotConnectedMessage /> : null}
+      {isConnected && !showSettings && !showPairs ? <TrainerPage /> : null}
     </div>
 
     <Footer />

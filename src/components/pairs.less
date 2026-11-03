@@ -1,0 +1,113 @@
+@import (reference) "../styles/variables.less";
+
+.pairs-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: @spacing-large;
+
+  .piece-type-selector {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    align-items: center;
+    justify-content: stretch;
+    margin-bottom: @spacing-large;
+
+    button {
+      width: 50%;
+    }
+  }
+
+  .pairs-empty {
+    width: 100%;
+    text-align: center;
+    color: @text-color-muted;
+  }
+
+  .pair-memo-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th {
+      padding: @spacing-small;
+      text-align: left;
+      color: @text-color-muted;
+      border-bottom: 1px solid @border-color-muted;
+    }
+
+    td {
+      padding: @spacing-small;
+      border-bottom: 1px solid @border-color-muted;
+    }
+  }
+
+  .pair-memo-group-row {
+    background-color: @float-bg-color;
+
+    .pair-memo-group-toggle {
+      width: 100%;
+      padding: @spacing-small;
+      border: none;
+      background: none;
+      cursor: pointer;
+      text-align: left;
+      font-size: inherit;
+      color: @text-color-muted;
+
+      &:hover {
+        color: @body-text-color;
+      }
+
+      &.pair-memo-group-toggle-expanded {
+        color: @btn-primary-bg-color;
+        font-weight: bold;
+      }
+    }
+  }
+
+  .pair-memo-hint {
+    width: 100%;
+    margin-top: @spacing-small;
+    border: 1px solid @border-color-muted;
+    border-radius: @border-radius-base;
+    padding: 0.5em;
+    font-size: small;
+    color: @text-color-muted;
+  }
+
+  .pair-memo-row {
+    &.pair-memo-row-filled .pair-memo-cell-pair {
+      color: @btn-primary-bg-color;
+      font-weight: bold;
+    }
+
+    .pair-memo-cell-inverse {
+      text-align: center;
+
+      input[type="checkbox"] {
+        cursor: pointer;
+      }
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: @spacing-small;
+      font-size: normal;
+      color: @body-text-color;
+      background-color: @input-bg-color;
+      border: 1px solid @border-color-muted;
+    }
+  }
+
+  .pairs-close-button {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: @spacing-large;
+    margin-bottom: 8rem;
+  }
+}
