@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { RootState } from './store';
 import { addMove, resetCube, selectIsReachedTarget, selectMoves, TimestampedMove } from './cube.duck';
 import { goToNextPrompt, goToPreviousPrompt, resetPrompt, selectCurrentPrompt } from './prompt.duck';
+// 'timeAttack' runs once through all prompts; 'practice' loops forever.
 import getCubeService from '../services/bluetooth-cube';
 
 // Type definitions
@@ -13,8 +14,11 @@ type TrainingResult = {
   recognitionTime: number | null;
 };
 
+export type TrainerMode = 'timeAttack' | 'practice';
+
 type TrainerState = {
   active: boolean;
+  mode: TrainerMode;
   lastPromptTime?: number;
   results: TrainingResult[];
 };
@@ -22,12 +26,14 @@ type TrainerState = {
 // Initial State
 const initialState: TrainerState = {
   active: false,
+  mode: 'timeAttack',
   results: [],
 };
 
 // Selectors
 export const selectTrainerState = (state: RootState) => state.trainer;
 export const selectTrainerActive = (state: RootState) => state.trainer.active;
+export const selectTrainerMode = (state: RootState) => state.trainer.mode;
 export const selectTrainerResults = (state: RootState) => state.trainer.results;
 export const selectTrainerLastPromptTime = (state: RootState) => state.trainer.lastPromptTime;
 
@@ -36,13 +42,15 @@ export const trainerSlice = createSlice({
   name: 'trainer',
   initialState,
   reducers: {
-    startTraining: (state) => {
+    startTraining: (state, action: PayloadAction<TrainerMode>) => {
       state.active = true;
+      state.mode = action.payload;
       state.results = [];
       state.lastPromptTime = Date.now();
     },
     resetTraining: (state) => {
       state.active = false;
+      state.mode = 'timeAttack';
       state.results = [];
       state.lastPromptTime = undefined;
     },
@@ -160,7 +168,13 @@ export const trainerCheckCompleteMiddleware = (store: any) => (next: any) => (ac
   next(action);
   if (action.type === addSuccessResult.type || action.type === addSkippedResult.type) {
     if (selectCurrentPrompt(store.getState()) === undefined) {
-      store.dispatch(endTraining());
+      // Practice mode loops through a freshly shuffled prompt list forever;
+      // time attack ends the session as soon as every prompt is done.
+      if (selectTrainerMode(store.getState()) === 'practice') {
+        store.dispatch(resetPrompt());
+      } else {
+        store.dispatch(endTraining());
+      }
     }
   }
 }

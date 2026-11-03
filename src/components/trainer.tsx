@@ -7,7 +7,7 @@ import { selectSelectedPieceType } from '../state/settings.duck';
 import { selectPairMemo } from '../state/pairs.duck';
 import Prompt from './prompt';
 import Moves from './moves';
-import { endTraining, selectTrainerActive, startTraining } from '../state/trainer.duck';
+import { endTraining, selectTrainerActive, selectTrainerMode, startTraining, TrainerMode } from '../state/trainer.duck';
 import Summary from './summary';
 import ProgressBar from './progress-bar';
 
@@ -22,15 +22,28 @@ export default function TrainerPage() {
     dispatch(resetPrompt());
   });
 
+  const isPractice = useAppSelector(selectTrainerMode) === 'practice';
+
   return <div className='trainer-page'>
     {isActive ?
       <>
-        <ProgressBar />
-        <Prompt />
-        <AlgorithmHint />
-        <Timer />
-        <Moves />
-        <StopButton />
+        {isPractice ?
+          <div className='practice-view'>
+            <PracticeMemo />
+            <Timer />
+            <Moves />
+            <StopButton />
+          </div>
+        :
+          <>
+            <ProgressBar />
+            <Prompt />
+            <AlgorithmHint />
+            <Timer />
+            <Moves />
+            <StopButton />
+          </>
+        }
       </>
     :
       <>
@@ -45,6 +58,7 @@ export default function TrainerPage() {
 
 function ActivateButton() {
   const Ref: any = useRef(null);
+  const modeRef: any = useRef('timeAttack');
 
   const dispatch = useAppDispatch();
 
@@ -54,8 +68,9 @@ function ActivateButton() {
   const [isLoadingFont, setIsLoadingFont] = useState(false);
   const [time, setTime] = useState(COUNTDOWN_START_TIME);
 
-  const startCountDown = async () => {
+  const startCountDown = async (mode: TrainerMode) => {
     if (isLoadingFont) return;
+    modeRef.current = mode;
     setIsLoadingFont(true);
     try {
       await document.fonts.load('1em Digital', '0123456789');
@@ -68,7 +83,7 @@ function ActivateButton() {
 
     setTime(COUNTDOWN_START_TIME);
     setShowCountDown(true);
-    Ref.current = setInterval(timeoutCallback, 1000);
+    Ref.current = setInterval(timeoutCallback, 700);
   }
 
   const endCountDown = () => {
@@ -76,7 +91,7 @@ function ActivateButton() {
 
     if (Ref.current) clearInterval(Ref.current);
     setShowCountDown(false);
-    dispatch(startTraining());
+    dispatch(startTraining(modeRef.current));
   }
 
   const timeoutCallback = () => {
@@ -93,11 +108,18 @@ function ActivateButton() {
     {showCountdown ?
       <div className='countdown'>{time}</div>
     :
-      <button
-      className='btn btn-primary btn-large'
-        onClick={startCountDown}
-        disabled={isLoadingFont}
-      >{isLoadingFont ? 'Loading…' : 'Start'}</button>
+      <>
+        <button
+          className='btn btn-primary btn-large'
+          onClick={() => startCountDown('timeAttack')}
+          disabled={isLoadingFont}
+        >{isLoadingFont ? 'Loading…' : 'Time attack'}</button>
+        <button
+          className='btn btn-default btn-large'
+          onClick={() => startCountDown('practice')}
+          disabled={isLoadingFont}
+        >Practice</button>
+      </>
     }
   </div>
 }
@@ -129,6 +151,29 @@ function AlgorithmHint() {
       >Show algorithm</button>
     }
   </div>;
+}
+
+// Practice mode shows the current pair together with its saved word so the
+// memo can be learned; the algorithm is only revealed on demand.
+function PracticeMemo() {
+  const prompt = useAppSelector(selectCurrentPrompt);
+
+  if (!prompt) {
+    return null;
+  }
+
+  return <div className='practice-memo'>
+    <Prompt />
+    <PracticeWord pair={prompt} />
+    <AlgorithmHint />
+  </div>;
+}
+
+function PracticeWord({ pair }: { pair: string }) {
+  const pieceType = useAppSelector(selectSelectedPieceType);
+  const memo = useAppSelector((state) => selectPairMemo(state, pieceType, pair));
+
+  return <p className='practice-word'>{memo.word || 'No word saved'}</p>;
 }
 
 function Instructions() {

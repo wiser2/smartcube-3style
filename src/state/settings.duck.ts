@@ -92,7 +92,22 @@ export const settingsSlice = createSlice({
       state.settings[state.selectedPieceType] = action.payload;
     },
     setIncludeInverses: (state, action: PayloadAction<boolean>) => {
-      state.settings[state.selectedPieceType].includeInverses = action.payload;
+      const pieceSettings = state.settings[state.selectedPieceType];
+      pieceSettings.includeInverses = action.payload;
+
+      // Mirror the current pair selection immediately. Enabling adds the inverse
+      // of every selected pair; disabling un-mirrors, keeping one direction of
+      // each mutually selected pair.
+      const inverseOf = (pair: string) => pair.split('').reverse().join('');
+      const selected = pieceSettings.selectedPairs;
+      if (action.payload) {
+        pieceSettings.selectedPairs =
+          [...new Set(selected.concat(selected.map(inverseOf)))].sort();
+      } else {
+        pieceSettings.selectedPairs = selected.filter((pair) =>
+          pair <= inverseOf(pair) || !selected.includes(inverseOf(pair))
+        );
+      }
     },
     setIncludeTwists: (state, action: PayloadAction<boolean>) => {
       state.settings[state.selectedPieceType].includeTwists = action.payload;
