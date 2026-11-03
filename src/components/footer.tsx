@@ -12,7 +12,7 @@ export function Footer() {
         Forked from <a href="https://github.com/AlphaSheep/smartcube-3style" target="_blank" rel="noreferrer">Brendan&nbsp;James&nbsp;Gray's smartcube-3style</a>
       </span>
       <span className="footer-links">
-        <a href="https://github.com/AlphaSheep/smartcube-3style" target="_blank" rel="noopener noreferrer">
+        <a href="https://github.com/wiser2/smartcube-3style" target="_blank" rel="noopener noreferrer">
           <FontAwesomeIcon icon={faGithub} />
           <span className="hide-mobile">GitHub</span>
         </a>
