@@ -71,23 +71,33 @@ export const {
 // Helper functions
 // Returns the algorithm to store for the inverse pair. In commutator notation
 // (surrounded by square brackets, e.g. [R U R', D']) the two parts are swapped:
-// [A, B] becomes [B, A]. Any other notation is treated as a move sequence and
-// the moves are reversed and inverted: R U R' D' becomes D R U' R'.
+// [A, B] becomes [B, A]. The same applies when setup moves precede the
+// commutator (e.g. R' B' R:[R D R',U']): a:[b,c] expands to a [b,c] a', whose
+// inverse is a [c,b] a', so the setup moves stay and the parts swap. Any other
+// notation is treated as a move sequence and the moves are reversed and
+// inverted: R U R' D' becomes D R U' R'.
 export function getInverseAlgorithm(algorithm: string): string {
   const trimmed = algorithm.trim();
-  if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) {
-    return invertMoveSequence(trimmed);
+
+  const colonIndex = findTopLevelColon(trimmed);
+  if (colonIndex >= 0) {
+    const setup = trimmed.slice(0, colonIndex).trim();
+    const commutator = trimmed.slice(colonIndex + 1).trim();
+    if (commutator.startsWith('[') && commutator.endsWith(']')) {
+      const swapped = swapCommutatorParts(commutator);
+      if (swapped !== null) {
+        // Preserve the original spacing after the colon.
+        const separator = trimmed[colonIndex + 1] === ' ' ? ': ' : ':';
+        return `${setup}${separator}${swapped}`;
+      }
+    }
   }
 
-  const inner = trimmed.slice(1, -1);
-  const commaIndex = findTopLevelComma(inner);
-  if (commaIndex < 0) {
-    return trimmed;
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return swapCommutatorParts(trimmed) ?? trimmed;
   }
 
-  const first = inner.slice(0, commaIndex).trim();
-  const second = inner.slice(commaIndex + 1).trim();
-  return `[${second}, ${first}]`;
+  return invertMoveSequence(trimmed);
 }
 
 function invertMoveSequence(algorithm: string): string {
@@ -118,6 +128,37 @@ function findTopLevelComma(text: string): number {
     } else if (character === ']' || character === ')') {
       depth--;
     } else if (character === ',' && depth === 0) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+// Swaps the two top-level parts of a bracketed commutator ([A, B] becomes
+// [B, A]), preserving the original comma spacing. Returns null when the text
+// inside the brackets has no top-level comma.
+function swapCommutatorParts(commutator: string): string | null {
+  const inner = commutator.slice(1, -1);
+  const commaIndex = findTopLevelComma(inner);
+  if (commaIndex < 0) {
+    return null;
+  }
+
+  const separator = inner[commaIndex + 1] === ' ' ? ', ' : ',';
+  const first = inner.slice(0, commaIndex).trim();
+  const second = inner.slice(commaIndex + 1).trim();
+  return `[${second}${separator}${first}]`;
+}
+
+function findTopLevelColon(text: string): number {
+  let depth = 0;
+  for (let index = 0; index < text.length; index++) {
+    const character = text[index];
+    if (character === '[' || character === '(') {
+      depth++;
+    } else if (character === ']' || character === ')') {
+      depth--;
+    } else if (character === ':' && depth === 0) {
       return index;
     }
   }
