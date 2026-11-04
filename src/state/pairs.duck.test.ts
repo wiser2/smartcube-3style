@@ -13,6 +13,14 @@ describe('getInverseAlgorithm', () => {
     expect(getInverseAlgorithm('[[R U R\', D\'], E]')).toBe('[E, [R U R\', D\']]');
   });
 
+  it('should swap the commutator parts and keep the setup moves of a setup commutator', () => {
+    expect(getInverseAlgorithm("R' B' R:[R D R',U']")).toBe("R' B' R:[U',R D R']");
+  });
+
+  it('should preserve colon and comma spacing in setup commutators', () => {
+    expect(getInverseAlgorithm("R' B' R: [R D R', U']")).toBe("R' B' R: [U', R D R']");
+  });
+
   it('should reverse and invert plain move sequences', () => {
     expect(getInverseAlgorithm('R U R\' D\'')).toBe('D R U\' R\'');
     expect(getInverseAlgorithm('M2')).toBe('M2');
