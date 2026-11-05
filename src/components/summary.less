@@ -3,6 +3,11 @@
 .summary {
   padding: @spacing-medium;
   max-height: 100%;
+  // Clamp to the page width: the case times chart is one long unbroken row of
+  // columns, and without this the summary block would grow as wide as all the
+  // columns instead of letting the chart scroll within the page width.
+  max-width: 100%;
+  min-width: 0;
   overflow: auto;
   margin-bottom: @spacing-large;
   padding-bottom: @spacing-large;
@@ -48,9 +53,14 @@
       height: 10em;
       margin-top: @spacing-small;
 
+      // With 30-40 cases, scroll inside the centered page column instead of
+      // letting the columns stretch the page wide.
+      overflow-x: auto;
+      padding-bottom: @spacing-small;
+
       .column-chart-column {
-        flex: 1 1 0;
-        min-width: 0;
+        flex: 1 0 auto;
+        min-width: 3.5em;
         display: flex;
         flex-direction: column;
         align-items: center;
