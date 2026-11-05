@@ -13,6 +13,7 @@ export default function Summary() {
 
   return <div className="summary">
     <CaseTimesBoxPlot mode={mode} results={results} />
+    <CaseTimesColumnChart mode={mode} results={results} />
     {results.length > 0 ?
       <>
         <table>
@@ -39,6 +40,48 @@ export default function Summary() {
       </>
     : null}
   </div>
+}
+
+// A time attack session solves each case once. Draw a column chart of the
+// completion time per case, slowest to fastest, so slow cases stand out.
+function CaseTimesColumnChart({ mode, results }) {
+  if (mode !== 'timeAttack') {
+    return null;
+  }
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  const cases = [...results].sort((a, b) => (b.time || Infinity) - (a.time || Infinity));
+  const max = Math.max(...cases.map((result) => result.time || 0));
+
+  return <div className="case-times-column-chart">
+    <h2>Case times</h2>
+    <div className="column-chart">
+      {cases.map((result) => {
+        const isSkipped = !result.time;
+        const percent = isSkipped ? 2 : Math.max((result.time / max) * 100, 2);
+
+        return <div className="column-chart-column" key={result.prompt}>
+          <span className="column-chart-bar-area">
+            <span
+              className={`column-chart-bar${isSkipped ? ' skipped' : ''}`}
+              style={{ height: `${percent}%` }}
+            />
+            <span className="column-chart-tooltip">
+              <span className="column-chart-prompt"><b>{result.prompt}</b></span>
+              <span className="column-chart-stat">total <b>{result.time ? formatTime(result.time) : "skipped"}</b></span>
+              <span className="column-chart-stat">recognition <b>{result.recognitionTime ? formatTime(result.recognitionTime) : "--"}</b></span>
+              <span className="column-chart-stat">execution <b>{formatTime(calcExecTime(result.time, result.recognitionTime))}</b></span>
+            </span>
+          </span>
+          <span className="column-chart-label" title={result.prompt}>{result.prompt}</span>
+          <span className="column-chart-time">{isSkipped ? 'skip' : formatTime(result.time)}</span>
+        </div>;
+      })}
+    </div>
+  </div>;
 }
 
 // After a practice session, each case has been seen any number of times. Show a
